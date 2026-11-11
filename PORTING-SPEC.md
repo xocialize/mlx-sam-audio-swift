@@ -30,7 +30,7 @@ licence AB-D-0220 (SAM License — `LICENSE-SAM` is the weights' licence text); 
 | S2 end to end | wav + prompt (+ spans) → marked target / residual, golden noise, fixed message | **PASSED 2026-11-11**: tokens and anchors equal; 97.0–110.7 dB |
 | S2b tokenizer + gates | swift-transformers tokenizer; the pre-registered V0 gates through `samaudio-gates batch` | **PASSED 2026-11-11** at fp32 and fp16 (MEASUREMENTS.md) |
 | S6 tiers | fp16 DiT (T5 and codec fp32) on the V0 mixtures and gates | **PASSED 2026-11-11**: same medians as fp32, 4.48 GB after load / 8.60 GB peak, 4.44 s per 10 s clip. int8 not tried |
-| V3 engine package | `MLXSAMAudio` on `audioSeparation` (needs AB-A-0268), conformance, footprint from `phys_footprint` | pending |
+| V3 engine package | `MLXSAMAudio` on `audioSeparation` (engine 0.77.0, contract 1.62.0: described target + spans), conformance, footprint from `phys_footprint` | **PASSED 2026-11-11**: 22 offline tests; `validate` through MLXServeEngine twice (explicit bundle; engine download); declared 3.5 + 6.0 GB; clips 1–30 s (5–30 s gated). Speed through the engine not established (GPU contention) |
 | V4 publish | repo + bundles under the SAM License | code: github.com/xocialize/mlx-sam-audio-swift `v0.1.0`; weights: `mlx-community/sam-audio-base-swift-fp16` @ `2cf624a4e250` (**published 2026-11-11**, hashes verified from a fresh download). Engine-package pins follow V3 |
 | V5 Gaea plugin | needs the MES change (AB-A-0269) | pending |
 

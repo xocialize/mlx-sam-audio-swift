@@ -15,8 +15,9 @@ redistribution conditions. Read [`NOTICE.md`](NOTICE.md) and [`LICENSE`](LICENSE
 ## Status
 
 `SAMAudioCore` (the model) and `samaudio-gates` (the parity tool) are complete and gated against upstream PyTorch; see
-[`PORTING-SPEC.md`](PORTING-SPEC.md) and [`MEASUREMENTS.md`](MEASUREMENTS.md). The MLXEngine package is not in this
-release.
+[`PORTING-SPEC.md`](PORTING-SPEC.md) and [`MEASUREMENTS.md`](MEASUREMENTS.md). `MLXSAMAudio` is the MLXEngine package on
+`audioSeparation` (engine ≥ 0.77.0): a described target, optional time spans, `target` and `residual` stems; mixtures
+of 1–30 s at any sample rate; 3.5 GB resident + 6.0 GB activation.
 
 **Weights:** [`mlx-community/sam-audio-base-swift-fp16`](https://huggingface.co/mlx-community/sam-audio-base-swift-fp16)
 (3.2 GB; fp16 transformer, fp32 T5 encoder and codec; SAM License), verified at revision `2cf624a4e250`.
@@ -35,6 +36,20 @@ let out = try pipeline.separate(wav: mixture, prompt: "speech", seed: 7)   // ML
 Download the bundle with `hf download mlx-community/sam-audio-base-swift-fp16 --local-dir <dir>`, or make it from the
 gated upstream checkpoint with `Tools/convert` (see `Tools/README.md`).
 
+Through MLXEngine:
+
+```swift
+// product "MLXSAMAudio"
+let engine = MLXServeEngine()
+await engine.useModelStore(ModelStore(root: modelsRoot))
+let id = try await engine.register(SAMAudioPackage.registration, configuration: SAMAudioConfiguration(), id: "sam-audio-base")
+try await engine.prepare(.audioSeparation, package: id)          // downloads mlx-community/sam-audio-base-swift-fp16 if needed
+let out = try await engine.run(AudioSeparationRequest(audio: mixture, targetDescription: "speech",
+                                                      spans: [], metaData: ["seed": .int(7)]),
+                               package: id) as! AudioSeparationResponse
+// out.stems[.target], out.stems[.residual]: 48 kHz mono .wav, the mixture's length
+```
+
 ## What to expect
 
 - **Write prompts as lowercase noun or verb phrases** — "speech", "rain", "door knock" — not sentences. The model was
@@ -42,7 +57,8 @@ gated upstream checkpoint with `Tools/convert` (see `Tools/README.md`).
 - Works well on general sounds, speech against music, music against speech, drums and bass.
 - **Does not separate guitar-like stems** in our tests.
 - Spans help intermittent sounds (a cat, a door knock). A span that covers the whole clip can hurt steady sounds.
-- One 10 s clip per call; longer audio needs windowing by the caller in this release.
+- Mixtures of 5–30 s separate reliably; under 5 s they do not (2 s clips fail a quarter of the time). Longer audio
+  needs windowing by the caller in this release.
 
 ## This port and mlx-audio's
 

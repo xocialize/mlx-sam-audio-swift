@@ -12,7 +12,8 @@ import MLX
 import MLXNN
 import SAMAudioCore
 
-TF32.disableForProcess()
+// Parity lanes need TF32 off. `validate`, and `batch` with --tf32 on, run as a host would (MLX's default, TF32 on).
+if !(CommandLine.arguments.dropFirst().first == "validate" || CommandLine.arguments.contains("--tf32-default")) { TF32.disableForProcess() }
 
 var args = Array(CommandLine.arguments.dropFirst())
 guard let lane = args.first else { print("usage: samaudio-gates <keys|t5|velocity|solve|all> --bundle <dir> --goldens <dir> [--cases a,b]"); exit(2) }
@@ -21,15 +22,19 @@ func option(_ name: String) -> String? {
     guard let i = args.firstIndex(of: name), i + 1 < args.count else { return nil }
     return args[i + 1]
 }
-guard let bundlePath = option("--bundle") else { print("--bundle is required"); exit(2) }
-let bundle = URL(fileURLWithPath: bundlePath), goldens = URL(fileURLWithPath: option("--goldens") ?? "/nonexistent")
+let bundle = URL(fileURLWithPath: option("--bundle") ?? "/nonexistent"), goldens = URL(fileURLWithPath: option("--goldens") ?? "/nonexistent")
 
 /// `phys_footprint` now and its lifetime peak, GB (the fleet's footprint figure).
-func phys() -> (now: Double, peak: Double) {
-    var info = task_vm_info_data_t()
-    var count = mach_msg_type_number_t(MemoryLayout<task_vm_info_data_t>.size / MemoryLayout<natural_t>.size)
-    _ = withUnsafeMutablePointer(to: &info) { $0.withMemoryRebound(to: integer_t.self, capacity: Int(count)) { task_info(mach_task_self_, task_flavor_t(TASK_VM_INFO), $0, &count) } }
-    return (Double(info.phys_footprint) / 1e9, Double(info.ledger_phys_footprint_peak) / 1e9)
+func phys() -> (now: Double, peak: Double) { physGB() }
+
+if lane == "validate" {
+    guard let m = option("--mixture"), let l = option("--long"), let tl = option("--toolong"), let o = option("--out") else {
+        print("validate needs --mixture, --long, --toolong and --out"); exit(2)
+    }
+    let ok = try await validate(bundle: option("--bundle").map { URL(fileURLWithPath: $0) }, store: option("--store").map { URL(fileURLWithPath: $0) },
+                                mixture: URL(fileURLWithPath: m), long: URL(fileURLWithPath: l), tooLong: URL(fileURLWithPath: tl), out: URL(fileURLWithPath: o))
+    print(ok ? "\nvalidate: all checks pass" : "\nvalidate: FAILED")
+    exit(ok ? 0 : 1)
 }
 
 if lane == "batch" {

@@ -82,7 +82,7 @@ public final class SAMAudioPipeline {
     /// `wav`: (samples,) 48 kHz mono. `noise`: (1, frames, 256) to pin the draw; otherwise drawn from `seed`.
     public func separate(wav: MLXArray, prompt: String, spans: [SeparationSpan] = [], seed: UInt64 = 0, steps: Int = 16,
                          method: FlowSolver.Method = .midpoint, noise: MLXArray? = nil, message: MLXArray? = nil,
-                         onStep: ((Int) throws -> Void)? = nil) throws -> SeparationOutput {
+                         onStep: ((Int) throws -> Void)? = nil, onDecode: ((Int, Int) throws -> Void)? = nil) throws -> SeparationOutput {
         guard wav.ndim == 1, wav.dim(0) > 0 else { throw SAMAudioError.invalidInput("wav must be (samples,) and non-empty") }
         guard !prompt.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { throw SAMAudioError.invalidInput("empty description") }
         let c = conditioning(wav: wav, prompt: prompt, spans: spans)
@@ -92,7 +92,8 @@ public final class SAMAudioPipeline {
         // Decode the two halves one after the other: the decoder's 48 kHz activations are the pipeline's memory peak.
         let msg = (message ?? MLXRandom.randInt(low: 0, high: 2, [1, DACVAE.messageBits])).reshaped([1, -1])
         var halves = [MLXArray]()
-        for part in [latent[0..., 0..., 0..<half], latent[0..., 0..., half...]] {
+        for (i, part) in [latent[0..., 0..., 0..<half], latent[0..., 0..., half...]].enumerated() {
+            try onDecode?(i + 1, 2)
             let w = codec.decode(part.asType(.float32), message: msg)
             eval(w)
             halves.append(w)

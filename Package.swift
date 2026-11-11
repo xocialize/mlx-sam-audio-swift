@@ -1,7 +1,8 @@
 // swift-tools-version: 6.2
 // mlx-sam-audio-swift — Meta's SAM-Audio (text- and span-prompted source separation) on Swift-MLX.
-// SAMAudioCore is the model (T5-base text encoder, DiT, DAC-VAE codec, flow solver); samaudio-gates is the parity CLI.
-// The engine wrapper (MLXSAMAudio) lands at V3.
+// SAMAudioCore is the model (T5-base text encoder, DiT, DAC-VAE codec with its watermark, flow solver); MLXSAMAudio is the
+// MLXEngine package on `audioSeparation` (contract ≥ 1.62.0: a described target + time spans); samaudio-gates is the parity
+// and validation CLI.
 import PackageDescription
 
 let package = Package(
@@ -9,11 +10,14 @@ let package = Package(
     platforms: [.macOS(.v26)],
     products: [
         .library(name: "SAMAudioCore", targets: ["SAMAudioCore"]),
+        .library(name: "MLXSAMAudio", targets: ["MLXSAMAudio"]),
         .executable(name: "samaudio-gates", targets: ["samaudio-gates"]),
     ],
     dependencies: [
-        .package(url: "https://github.com/ml-explore/mlx-swift", from: "0.32.3"),
+        // The fleet's fork, as mlx-engine-swift ≥ 0.74.1 uses it (AB-D-0208): two URLs for one package identity is an error.
+        .package(url: "https://github.com/xocialize/mlx-swift", from: "0.32.4"),
         .package(url: "https://github.com/huggingface/swift-transformers", from: "1.1.6"),
+        .package(url: "https://github.com/xocialize/mlx-engine-swift", from: "0.77.0"),
     ],
     targets: [
         .target(
@@ -28,10 +32,22 @@ let package = Package(
             path: "Sources/SAMAudioCore",
             swiftSettings: [.swiftLanguageMode(.v5)]
         ),
+        .target(
+            name: "MLXSAMAudio",
+            dependencies: [
+                "SAMAudioCore",
+                .product(name: "MLXToolKit", package: "mlx-engine-swift"),
+                .product(name: "MLX", package: "mlx-swift"),
+            ],
+            path: "Sources/MLXSAMAudio",
+            swiftSettings: [.swiftLanguageMode(.v5)]
+        ),
         .executableTarget(
             name: "samaudio-gates",
             dependencies: [
-                "SAMAudioCore",
+                "SAMAudioCore", "MLXSAMAudio",
+                .product(name: "MLXToolKit", package: "mlx-engine-swift"),
+                .product(name: "MLXServeCore", package: "mlx-engine-swift"),
                 .product(name: "MLX", package: "mlx-swift"),
                 .product(name: "MLXNN", package: "mlx-swift"),
                 .product(name: "MLXRandom", package: "mlx-swift"),
@@ -43,6 +59,16 @@ let package = Package(
             name: "SAMAudioCoreTests",
             dependencies: ["SAMAudioCore"],
             path: "Tests/SAMAudioCoreTests"
+        ),
+        .testTarget(
+            name: "MLXSAMAudioTests",
+            dependencies: [
+                "SAMAudioCore", "MLXSAMAudio",
+                .product(name: "MLXServeConformance", package: "mlx-engine-swift"),
+                .product(name: "MLXServeCore", package: "mlx-engine-swift"),
+                .product(name: "MLXToolKit", package: "mlx-engine-swift"),
+            ],
+            path: "Tests/MLXSAMAudioTests"
         ),
     ]
 )

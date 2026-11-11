@@ -21,8 +21,8 @@ import SAMAudioCore
 /// code is a translation of SAM-licensed code. The T5-base encoder inside the bundle is Apache-2.0.
 ///
 /// Sampling: the flow starts from noise drawn from MLX's generator keyed with the seed (`metaData["seed"]`, an int; random
-/// when absent), so a seed reproduces a separation within Swift-MLX. The watermark's message is drawn separately and is not
-/// part of what a seed fixes.
+/// when absent), and the watermark's message is drawn from the same seed, so a seed reproduces a separation to the sample
+/// within Swift-MLX.
 @InferenceActor
 public final class SAMAudioPackage: ModelPackage {
     public typealias Configuration = SAMAudioConfiguration

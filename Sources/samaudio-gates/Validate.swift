@@ -82,6 +82,10 @@ func validate(bundle: URL?, store: URL?, mixture: URL, long: URL, tooLong: URL, 
                                                   spans: [AudioSeparationSpan(startSeconds: 0.5, endSeconds: 4.0), AudioSeparationSpan(startSeconds: 8.0, endSeconds: 9.5, present: false)],
                                                   metaData: ["seed": .int(7)]),
                   expect: [.target, .residual], length: mixSamples.count, mixRMS: mixRMS)
+    // a seed reproduces the separation to the sample (noise and watermark message both come from it)
+    let a = try await engine.run(AudioSeparationRequest(audio: mix, stems: [.target], targetDescription: "speech", metaData: ["seed": .int(7)]), package: pid) as? AudioSeparationResponse
+    let b = try Data(contentsOf: out.appendingPathComponent("target-only_target.wav"))
+    check("same seed, same bytes", a?.stems[.target]?.data == b)
     let afterShort = physGB().peak
     try await run("long-30s", AudioSeparationRequest(audio: longMix, targetDescription: "speech", metaData: ["seed": .int(7)]),
                   expect: [.target, .residual], length: longSamples.count, mixRMS: longRMS)

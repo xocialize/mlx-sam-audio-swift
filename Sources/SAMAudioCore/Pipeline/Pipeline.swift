@@ -90,7 +90,9 @@ public final class SAMAudioPipeline {
         let latent = try FlowSolver.solve(model, noise: start.asType(c.audioFeatures.dtype), c, steps: steps, method: method, onStep: onStep)
         let half = DACVAE.latentDim
         // Decode the two halves one after the other: the decoder's 48 kHz activations are the pipeline's memory peak.
-        let msg = (message ?? MLXRandom.randInt(low: 0, high: 2, [1, DACVAE.messageBits])).reshaped([1, -1])
+        // The watermark's 16-bit message is drawn from the seed too (its own key), so a seeded separation is reproducible to
+        // the sample. Upstream draws it from the global generator.
+        let msg = (message ?? MLXRandom.randInt(low: 0, high: 2, [1, DACVAE.messageBits], key: MLXRandom.key(seed &+ 0x5A4D_A0D1))).reshaped([1, -1])
         var halves = [MLXArray]()
         for (i, part) in [latent[0..., 0..., 0..<half], latent[0..., 0..., half...]].enumerated() {
             try onDecode?(i + 1, 2)

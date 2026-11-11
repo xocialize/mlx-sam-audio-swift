@@ -92,6 +92,9 @@ a fixed stem beside a description, a speaker pick, a span ending before it start
 **Declared: 3.5 GB resident + 6.0 GB peak activation** (9.5 GB ≥ 9.07). By the engine's 0.7 × RAM admission that is a
 16 GB-Mac tier.
 
+**v0.2.1:** the watermark's message is drawn from the request seed (its own key), so the same seed gives the same
+bytes — checked in `validate` ("same seed, same bytes"). v0.2.0 drew it from the global generator.
+
 **Offline conformance:** 22 tests pass (`swift test`): manifest (C0 / C1 / C7 / C8 with the port-code notice /
 C-memory / C11 / provenance), MAT-1..5, CAN-1..3, the request plane, audio IO.
 

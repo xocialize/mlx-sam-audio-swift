@@ -6,7 +6,7 @@ Writes:
   model.safetensors         DiT + input projections + anchors + the align_masked_video terms the text path needs
                             (gate, conv.bias, layer_norm.*; conv.weight is only for real video features and is dropped).
                             torch key names; Conv1d weights (O, I, K) -> (O, K, I).
-  text_encoder.safetensors  the T5-base ENCODER from `t5-base` (Apache-2.0), compact keys.
+  text_encoder.safetensors  the T5-base ENCODER from `t5-base` (Apache-2.0), compact keys, always fp32.
   config.json               the upstream config's text path + provenance.
 The codec (codec.safetensors) is written by convert_codec.py.
 """
@@ -48,11 +48,12 @@ for i in range(n):
     enc[f"blocks.{i}.ff_norm.weight"] = t5[f"{p}.1.layer_norm.weight"]
 used = 3 + n * 8
 assert used == len({k for k in t5 if not k.startswith("encoder.embed_tokens")}), (used, len(t5))
-save_file({k: np.ascontiguousarray(v.numpy().astype(dt)) for k, v in enc.items()}, str(out / "text_encoder.safetensors"), metadata={"format": "mlx", "source": "t5-base"})
+# The text encoder is always fp32: T5 overflows in half precision, and the pipeline loads it as fp32 whatever the DiT's dtype.
+save_file({k: np.ascontiguousarray(v.numpy().astype(np.float32)) for k, v in enc.items()}, str(out / "text_encoder.safetensors"), metadata={"format": "mlx", "source": "t5-base"})
 
 cfg = json.loads((snap / "config.json").read_text())
 keep = {k: cfg[k] for k in ("in_channels", "audio_codec", "text_encoder", "transformer", "num_anchors", "anchor_embedding_dim")}
 keep["text_encoder"] |= {"layers": n, "heads": 12, "d_kv": 64, "d_ff": 3072, "vocab": int(t5["shared.weight"].shape[0]), "relative_buckets": 32, "relative_max_distance": 128}
-keep["provenance"] = {"source": a.repo, "dtype": a.dtype, "upstream_code": "facebookresearch/sam-audio@bb4c699", "license": "SAM License (see LICENSE)"}
+keep["provenance"] = {"source": a.repo, "source_revision": snap.name, "dtype": a.dtype, "text_encoder_dtype": "float32", "codec_dtype": "float32", "upstream_code": "facebookresearch/sam-audio@bb4c699", "license": "SAM License (see LICENSE)"}
 (out / "config.json").write_text(json.dumps(keep, indent=2))
 print("model", len(model), "tensors", sum(v.size for v in model.values()) / 1e6, "M | t5", len(enc), "tensors", sum(v.numel() for v in enc.values()) / 1e6, "M")

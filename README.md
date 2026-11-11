@@ -15,20 +15,25 @@ redistribution conditions. Read [`NOTICE.md`](NOTICE.md) and [`LICENSE`](LICENSE
 ## Status
 
 `SAMAudioCore` (the model) and `samaudio-gates` (the parity tool) are complete and gated against upstream PyTorch; see
-[`PORTING-SPEC.md`](PORTING-SPEC.md) and [`MEASUREMENTS.md`](MEASUREMENTS.md). The MLXEngine package and published
-weight bundles are not in this release.
+[`PORTING-SPEC.md`](PORTING-SPEC.md) and [`MEASUREMENTS.md`](MEASUREMENTS.md). The MLXEngine package is not in this
+release.
+
+**Weights:** [`mlx-community/sam-audio-base-swift-fp16`](https://huggingface.co/mlx-community/sam-audio-base-swift-fp16)
+(3.2 GB; fp16 transformer, fp32 T5 encoder and codec; SAM License), verified at revision `2cf624a4e250`.
 
 ## Use
 
 ```swift
+// Package.swift: .package(url: "https://github.com/xocialize/mlx-sam-audio-swift", from: "0.1.0") → product "SAMAudioCore"
 import SAMAudioCore
 
-let pipeline = try await SAMAudioPipeline(bundle: bundleURL, modelDType: .float16)
+let pipeline = try await SAMAudioPipeline(bundle: bundleURL)   // a local copy of mlx-community/sam-audio-base-swift-fp16
 let out = try pipeline.separate(wav: mixture, prompt: "speech", seed: 7)   // MLXArray (samples,), 48 kHz mono
 // out.target, out.residual
 ```
 
-The bundle is made from the gated upstream checkpoint with `Tools/convert` (see `Tools/README.md`).
+Download the bundle with `hf download mlx-community/sam-audio-base-swift-fp16 --local-dir <dir>`, or make it from the
+gated upstream checkpoint with `Tools/convert` (see `Tools/README.md`).
 
 ## What to expect
 
@@ -44,4 +49,4 @@ The bundle is made from the gated upstream checkpoint with `Tools/convert` (see 
 mlx-audio's Python port of SAM-Audio omits a term upstream applies on every call (`align_masked_video` on a zero video
 feature) and is 19–25 dB from upstream per model step because of it
 ([mlx-audio#1176](https://github.com/Neywa-Labs/mlx-audio/issues/1176)). The `mlx-community/sam-audio-*` bundles made
-for it do not contain the tensors this package needs; convert from the upstream checkpoint.
+for it do not contain the tensors this package needs; use the bundle above.

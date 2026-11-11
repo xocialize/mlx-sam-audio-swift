@@ -35,6 +35,12 @@ mixture; "catastrophic" = worse than the mixture):
 | fp32 | 12.47 dB, 91.7 % ≥ 3 dB, 1 catastrophic — pass | 13.94 dB, 0 — pass | 7.68 dB, 1 | 4.1–8.6 s, median 6.90 s | 5.64 / 10.02 GB |
 | **fp16 DiT** (T5 and codec fp32) | 12.47 dB, 95.8 % ≥ 3 dB, 1 catastrophic — pass | 13.94 dB, 0 — pass | 7.68 dB, 1 | 4.4–5.2 s, median 4.44 s | 4.48 / 8.60 GB |
 
+| **published bundle, as stored** (`mlx-community/sam-audio-base-swift-fp16`) | same rows, per-row scores equal to the fp16 line (max difference 0.000 dB) | same | same | 3.0–3.8 s, median 3.77 s | **3.34 / 7.47 GB** |
+
+The fp32 and fp16 lines load the fp32 conversion (the fp16 line casts at load, which leaves more resident); the last
+line is the shipped bundle. Fresh-download check: 7 of 7 file hashes equal to the local bundle, and separations from
+the download agree with the pre-upload run at 48–59 dB (the difference is the random watermark message).
+
 Per stem: drums 13.5 dB, bass 5.8 dB, guitar 1.7 dB (guitar does not separate). Music against speech 15.41 dB, 0 of 8
 catastrophic. No empty targets in either tier. Target + residual against the mixture: SI-SDR 8.6 dB (not
 sample-aligned; `regenerated`).

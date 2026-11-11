@@ -2,7 +2,7 @@
 //
 //   samaudio-gates <lane> --bundle <dir> --goldens <dir of case dirs> [--cases A01_rain,B01_song,…]
 //   lanes: keys | t5 | velocity | solve | codec | e2e | all
-//   samaudio-gates batch --bundle <dir> --manifest <tsv: wav, prompt, seed, out prefix[, spans a-b;c-d]> [--dtype fp32|fp16] [--steps 16]
+//   samaudio-gates batch --bundle <dir> --manifest <tsv: wav, prompt, seed, out prefix[, spans a-b;c-d]> [--dtype stored|fp32|fp16] [--steps 16]
 //
 // Lanes run at fp32 with TF32 off (MLX's default TF32 matmul costs ~55 dB on these lanes; AB-L-0315): the tool sets
 // MLX_ENABLE_TF32=0 before its first MLX op and reports what latched.
@@ -35,11 +35,11 @@ func phys() -> (now: Double, peak: Double) {
 if lane == "batch" {
     if let mb = option("--cache-mb").flatMap(Int.init) { MLX.Memory.cacheLimit = mb * 1_048_576 }
     guard let manifestPath = option("--manifest") else { print("--manifest is required"); exit(2) }
-    let dtype: DType = (option("--dtype") ?? "fp32") == "fp16" ? .float16 : .float32
+    let dtype: DType? = ["fp16": DType.float16, "fp32": DType.float32][option("--dtype") ?? "stored"]  // default: as stored in the bundle
     let steps = Int(option("--steps") ?? "16") ?? 16
     let t0 = Date()
     let pipe = try await SAMAudioPipeline(bundle: bundle, modelDType: dtype)
-    print("loaded \(dtype) in \(String(format: "%.2f", Date().timeIntervalSince(t0))) s; phys \(String(format: "%.2f", phys().now)) GB; TF32 off: \(TF32.environmentDisables)")
+    print("loaded \(dtype.map { "\($0)" } ?? "as stored") in \(String(format: "%.2f", Date().timeIntervalSince(t0))) s; phys \(String(format: "%.2f", phys().now)) GB; TF32 off: \(TF32.environmentDisables)")
     var times = [Double]()
     for (n, line) in try String(contentsOfFile: manifestPath, encoding: .utf8).split(separator: "\n").enumerated() {
         let f = line.split(separator: "\t", omittingEmptySubsequences: false).map(String.init)
